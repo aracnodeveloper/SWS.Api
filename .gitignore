@@ -1,0 +1,12 @@
+bin/
+obj/
+*.user
+.vs/
+.idea/
+appsettings.*.local.json
+.env
+# Imágenes subidas desde el panel admin (no van al git).
+wwwroot/
+
+# macOS
+.DS_Store

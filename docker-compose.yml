@@ -1,0 +1,47 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: sws_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: swsdb
+      POSTGRES_USER: swsuser
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-swspass}
+    ports:
+      - "5445:5432"
+    volumes:
+      - sws_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U swsuser -d swsdb" ]
+      interval: 5s
+      timeout: 3s
+      retries: 15
+
+  api:
+    # Imagen publicada por el CI en GHCR (el server hace pull, no build).
+    image: ghcr.io/aracno-cia-ltda/sws-api:latest
+    # 'build' queda para desarrollo local (docker compose up --build).
+    build: .
+    container_name: sws_api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    # Secretos (JWT, Password, PayPhone, SMTP, Admin) van en .env — ver .env.example.
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://+:7010
+      # El host es el nombre del servicio 'postgres' (red interna de compose), puerto interno 5432.
+      ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=swsdb;Username=swsuser;Password=${POSTGRES_PASSWORD:-swspass};Pooling=true;Maximum Pool Size=50"
+    ports:
+      - "7010:7010"
+    volumes:
+      # Imágenes subidas desde el panel admin (persisten entre deploys).
+      - sws_uploads:/app/wwwroot/uploads
+
+volumes:
+  sws_pgdata:
+  sws_uploads:
